@@ -84,16 +84,32 @@ input[type=file]{width:100%;font-size:13px;color:#ddd}
    <button class="btn secondary" id="showAll">सभी वीडियो</button>
   </div>
  </section>
+ <section class="uploadbox open" id="authBox" style="display:block">
+  <h2>अकाउंट / लॉगिन</h2>
+  <p class="small">वीडियो अपलोड करने के लिए अपना अकाउंट बनाओ या लॉगिन करो।</p>
+  <form id="authForm">
+   <label for="authEmail">ईमेल *</label>
+   <input id="authEmail" type="text" inputmode="email" autocomplete="email" placeholder="अपना ईमेल लिखें" required>
+   <label for="authPassword">पासवर्ड *</label>
+   <input id="authPassword" type="password" autocomplete="current-password" minlength="6" placeholder="कम-से-कम 6 अक्षर" required>
+   <div id="authStatus" role="status"></div>
+   <div class="rowbtn">
+    <button class="btn primary" type="button" id="signInBtn">लॉगिन</button>
+    <button class="btn secondary" type="button" id="signUpBtn">नया अकाउंट बनाएँ</button>
+    <button class="btn secondary" type="button" id="signOutBtn" style="display:none">लॉगआउट</button>
+   </div>
+  </form>
+ </section>
  <section class="uploadbox" id="uploadBox">
   <h2>अपना वीडियो जोड़ें</h2>
-  <p class="small">केवल अपना बनाया हुआ या जिसकी अनुमति आपके पास हो वही वीडियो चुनें। 1 मिनट तक का वीडियो रखें।</p>
+  <p class="small">केवल अपना बनाया हुआ या अनुमति वाला वीडियो चुनें। सीमा: 50 MB और 1 मिनट। लॉगिन जरूरी है।</p>
   <form id="uploadForm">
    <label for="videoTitle">वीडियो का नाम *</label>
    <input id="videoTitle" type="text" maxlength="90" placeholder="जैसे: हमारे गाँव की सुबह" required>
    <label for="videoDesc">छोटा विवरण (वैकल्पिक)</label>
    <textarea id="videoDesc" maxlength="500" placeholder="इस वीडियो के बारे में लिखें..."></textarea>
    <label for="videoFile">मोबाइल से वीडियो चुनें *</label>
-   <input id="videoFile" type="file" accept="video/*" required>
+   <input id="videoFile" type="file" accept="video/mp4,video/webm,video/quicktime" required>
    <div id="status"></div>
    <div class="rowbtn"><button class="btn primary" type="submit">वीडियो जोड़ें</button><button class="btn secondary" type="button" id="cancelUpload">रद्द करें</button></div>
   </form>
@@ -112,7 +128,7 @@ input[type=file]{width:100%;font-size:13px;color:#ddd}
  </section>
  <div class="sectionhead"><h2 id="listHeading">आपके वीडियो</h2><span class="small" id="count">0 वीडियो</span></div>
  <section class="grid" id="videoGrid" aria-live="polite"></section>
- <div class="notice"><strong>परीक्षण संस्करण की सीमा:</strong> वीडियो इंटरनेट पर अपलोड नहीं होते और दूसरे लोगों को नहीं दिखते। पेज बंद/रीलोड करने पर चुनी गई स्थानीय वीडियो सूची मिट सकती है। सभी यूज़रों के लिए असली अपलोड, अकाउंट और ऑनलाइन स्टोरेज बाद में सर्वर जोड़कर बनेंगे।</div>
+ <div class="notice"><strong>ज़रूरी बात:</strong> यह संस्करण Supabase Storage में वीडियो रखता है। सार्वजनिक bucket होने के कारण वीडियो का लिंक रखने वाला व्यक्ति उसे देख सकता है। किसी और का कॉपीराइट वाला वीडियो बिना अनुमति अपलोड न करें।</div>
 </main>
 <footer>
  <button id="homeBtn"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5v10a.5.5 0 0 1-.5.5h-6v-7h-5v7h-6a.5.5 0 0 1-.5-.5z"/></svg>होम</button>
@@ -130,13 +146,16 @@ input[type=file]{width:100%;font-size:13px;color:#ddd}
   <button class="btn secondary" id="deleteCurrent">इस वीडियो को हटाएँ</button>
  </div>
 </section>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const $=id=>document.getElementById(id);
-let videos=[{id:"yt-D5bN_lMW2nc",title:"आपके जोड़े गए YouTube वीडियो",desc:"YouTube से एम्बेड किया गया वीडियो। चलाने के लिए प्ले दबाएँ।",youtubeId:"D5bN_lMW2nc"}];
-let currentId=null;
-let currentUrl=null;
+const SUPABASE_URL='https://schzmhslgrxfpccexhjp.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY='PASTE_YOUR_SB_PUBLISHABLE_KEY_HERE';
+const BUCKET='ksr-videos';
+let sb=null, currentUser=null, videos=[], currentId=null, currentUrl=null;
 const grid=$('videoGrid');
-function escapeHTML(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+function escapeHTML(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function getYouTubeId(url){
  try{const u=new URL(url);let id='';
  if(u.hostname==='youtu.be')id=u.pathname.slice(1);
@@ -148,82 +167,144 @@ function getYouTubeId(url){
  return /^[A-Za-z0-9_-]{11}$/.test(id)?id:null;
  }catch(e){return null;}
 }
+function showStatus(id,msg){$(id).textContent=msg||'';}
+function configured(){
+ if(!window.supabase){showStatus('authStatus','इंटरनेट से Supabase लाइब्रेरी लोड नहीं हुई। इंटरनेट जाँचें।');return false;}
+ if(!SUPABASE_PUBLISHABLE_KEY || SUPABASE_PUBLISHABLE_KEY==='PASTE_YOUR_SB_PUBLISHABLE_KEY_HERE'){
+  showStatus('authStatus','पहले HTML फाइल में PASTE_YOUR_SB_PUBLISHABLE_KEY_HERE की जगह अपनी sb_publishable_ वाली key डालें।');return false;
+ }
+ if(!sb) sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+ return true;
+}
 function render(){
  const q=$('search').value.trim().toLowerCase();
- const filtered=videos.filter(v=>(v.title+' '+v.desc).toLowerCase().includes(q));
+ const filtered=videos.filter(v=>(v.title+' '+(v.desc||'')).toLowerCase().includes(q));
  $('count').textContent=filtered.length+' वीडियो';
- $('listHeading').textContent=q?'खोज के परिणाम':'आपके वीडियो';
+ $('listHeading').textContent=q?'खोज के परिणाम':'ऑनलाइन वीडियो';
  grid.innerHTML='';
- if(!filtered.length){grid.innerHTML='<div class="empty"><strong>'+(q?'कोई वीडियो नहीं मिला':'अभी कोई वीडियो नहीं है')+'</strong>'+(q?'दूसरा शब्द खोजकर देखें।':'“अपना वीडियो जोड़ें” दबाकर मोबाइल से पहला वीडियो चुनें।')+'</div>';return;}
+ if(!filtered.length){grid.innerHTML='<div class="empty"><strong>'+(q?'कोई वीडियो नहीं मिला':'अभी कोई ऑनलाइन वीडियो नहीं है')+'</strong>'+(q?'दूसरा शब्द खोजकर देखें।':'लॉगिन करके अपना पहला वीडियो अपलोड करें।')+'</div>';return;}
  filtered.forEach(v=>{
   const card=document.createElement('article');card.className='card';
-  card.innerHTML='<div class="thumb">'+(v.youtubeId?'<img src="https://img.youtube.com/vi/'+encodeURIComponent(v.youtubeId)+'/hqdefault.jpg" alt="वीडियो थंबनेल" style="width:100%;height:100%;object-fit:cover">':'')+'<div class="play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div><span class="duration">वीडियो</span></div><div class="info"><div class="title">'+escapeHTML(v.title)+'</div><div class="meta">'+(v.youtubeId?'YouTube वीडियो':'KSR Video · स्थानीय वीडियो')+'</div><div class="cardbuttons"><button class="btn secondary watch">▶ देखें</button></div></div>';
+  const thumb=v.youtubeId?'<img src="https://img.youtube.com/vi/'+encodeURIComponent(v.youtubeId)+'/hqdefault.jpg" alt="वीडियो थंबनेल" style="width:100%;height:100%;object-fit:cover">':'';
+  card.innerHTML='<div class="thumb">'+thumb+'<div class="play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div><span class="duration">वीडियो</span></div><div class="info"><div class="title">'+escapeHTML(v.title)+'</div><div class="meta">'+(v.youtubeId?'YouTube लिंक':'KSR Video · ऑनलाइन')+'</div><div class="cardbuttons"><button class="btn secondary watch">▶ देखें</button></div></div>';
   card.querySelector('.watch').addEventListener('click',e=>{e.stopPropagation();playVideo(v.id)});
   card.querySelector('.thumb').addEventListener('click',()=>playVideo(v.id));
   grid.appendChild(card);
  });
 }
-function playVideo(id){
- const v=videos.find(x=>x.id===id);if(!v)return;
- currentId=id;
- if(currentUrl){URL.revokeObjectURL(currentUrl);currentUrl=null;}
- if(v.youtubeId){$('mainVideo').pause();$('mainVideo').style.display='none';$('mainVideo').removeAttribute('src');$('mainVideo').load();$('youtubeFrame').style.display='block';$('youtubeFrame').src='https://www.youtube.com/embed/'+encodeURIComponent(v.youtubeId);}else{$('youtubeFrame').style.display='none';$('youtubeFrame').removeAttribute('src');$('mainVideo').style.display='block';currentUrl=URL.createObjectURL(v.file);$('mainVideo').src=currentUrl;}
- $('playerTitle').textContent=v.title;
- $('playerMeta').textContent='KSR Video · आपके डिवाइस पर';
- $('playerDesc').textContent=v.desc||'';
- $('player').classList.add('open');document.body.style.overflow='hidden';
- $('mainVideo').play().catch(()=>{});
+async function loadVideos(){
+ if(!configured()) return;
+ const {data,error}=await sb.from('videos').select('id,user_id,title,description,storage_path,youtube_id,created_at').order('created_at',{ascending:false});
+ if(error){showStatus('authStatus','वीडियो लोड नहीं हुए: '+error.message);return;}
+ videos=(data||[]).map(v=>{
+  let videoUrl=null;
+  if(v.storage_path) videoUrl=sb.storage.from(BUCKET).getPublicUrl(v.storage_path).data.publicUrl;
+  return {id:v.id,title:v.title,desc:v.description||'',userId:v.user_id,storagePath:v.storage_path,youtubeId:v.youtube_id||null,videoUrl};
+ });
+ render();
 }
-function closePlayer(){
- $('mainVideo').pause();$('mainVideo').removeAttribute('src');$('mainVideo').load();$('mainVideo').style.display='block';const yf=$('youtubeFrame');if(yf)yf.remove();$('mainVideo').style.display='block';$('youtubeFrame').removeAttribute('src');$('youtubeFrame').style.display='none';
- $('player').classList.remove('open');document.body.style.overflow='';
- if(currentUrl){URL.revokeObjectURL(currentUrl);currentUrl=null;}
- currentId=null;
+function updateAuthUI(user){
+ currentUser=user||null;
+ $('signInBtn').style.display=user?'none':'inline-block';
+ $('signUpBtn').style.display=user?'none':'inline-block';
+ $('signOutBtn').style.display=user?'inline-block':'none';
+ $('authEmail').disabled=!!user;
+ $('authPassword').disabled=!!user;
+ $('authStatus').textContent=user?'लॉगिन है: '+user.email+' — अब वीडियो अपलोड कर सकते हो।':'लॉगिन या नया अकाउंट बनाएँ।';
+ $('uploadBox').classList.toggle('open',!!user);
+ if(user) $('uploadBox').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
-function openUpload(){ $('uploadBox').classList.add('open');$('uploadBox').scrollIntoView({behavior:'smooth',block:'start'}); }
+async function init(){
+ if(!configured()) {render();return;}
+ const {data:{session}}=await sb.auth.getSession();
+ updateAuthUI(session?.user||null);
+ await loadVideos();
+ sb.auth.onAuthStateChange((_event,session)=>{updateAuthUI(session?.user||null);loadVideos();});
+}
+$('signUpBtn').onclick=async()=>{
+ if(!configured())return;
+ const email=$('authEmail').value.trim(),password=$('authPassword').value;
+ if(!email||password.length<6){showStatus('authStatus','ईमेल लिखें और कम-से-कम 6 अक्षर का पासवर्ड रखें।');return;}
+ showStatus('authStatus','अकाउंट बनाया जा रहा है...');
+ const {data,error}=await sb.auth.signUp({email,password});
+ if(error){showStatus('authStatus','अकाउंट नहीं बना: '+error.message);return;}
+ if(data.session){updateAuthUI(data.session.user);showStatus('authStatus','अकाउंट बन गया और लॉगिन हो गया।');}
+ else showStatus('authStatus','अकाउंट अनुरोध सफल। अगर ईमेल पुष्टि माँगी जाए, तो अपने ईमेल में आए लिंक को खोलो, फिर लॉगिन करो।');
+};
+$('signInBtn').onclick=async()=>{
+ if(!configured())return;
+ const email=$('authEmail').value.trim(),password=$('authPassword').value;
+ if(!email||!password){showStatus('authStatus','ईमेल और पासवर्ड लिखें।');return;}
+ showStatus('authStatus','लॉगिन हो रहा है...');
+ const {data,error}=await sb.auth.signInWithPassword({email,password});
+ if(error){showStatus('authStatus','लॉगिन नहीं हुआ: '+error.message);return;}
+ updateAuthUI(data.user);await loadVideos();
+};
+$('signOutBtn').onclick=async()=>{if(sb)await sb.auth.signOut();updateAuthUI(null);};
+function openUpload(){
+ if(!currentUser){showStatus('authStatus','पहले लॉगिन करो या नया अकाउंट बनाओ।');$('authBox').scrollIntoView({behavior:'smooth'});return;}
+ $('uploadBox').classList.add('open');$('uploadBox').scrollIntoView({behavior:'smooth',block:'start'});
+}
 $('openUpload').onclick=openUpload;$('footerUpload').onclick=openUpload;
-$('cancelUpload').onclick=()=>{$('uploadBox').classList.remove('open');$('status').textContent='';};
-$('uploadForm').addEventListener('submit',e=>{
+$('cancelUpload').onclick=()=>{$('uploadBox').classList.remove('open');showStatus('status','');};
+$('uploadForm').addEventListener('submit',async e=>{
  e.preventDefault();
+ if(!configured())return;
+ if(!currentUser){showStatus('status','पहले लॉगिन करो।');return;}
  const title=$('videoTitle').value.trim(),desc=$('videoDesc').value.trim(),file=$('videoFile').files[0];
  if(!file||!title)return;
- if(!file.type.startsWith('video/')){$('status').textContent='कृपया वीडियो फ़ाइल चुनें।';return;}
- if(file.size>150*1024*1024){$('status').textContent='इस नमूने में 150 MB से छोटी फ़ाइल चुनें।';return;}
+ if(!file.type.startsWith('video/')){showStatus('status','कृपया वीडियो फ़ाइल चुनें।');return;}
+ if(file.size>50*1024*1024){showStatus('status','फाइल 50 MB से छोटी होनी चाहिए।');return;}
  const probe=document.createElement('video');probe.preload='metadata';
  const probeUrl=URL.createObjectURL(file);
- probe.onloadedmetadata=()=>{
+ probe.onloadedmetadata=async()=>{
   URL.revokeObjectURL(probeUrl);
-  if(probe.duration>60.5){$('status').textContent='वीडियो 1 मिनट से लंबा है। कृपया छोटा वीडियो चुनें।';return;}
-  videos.unshift({id:Date.now()+Math.random(),title,desc,file});
-  $('uploadForm').reset();$('uploadBox').classList.remove('open');$('status').textContent='';
-  $('search').value='';render();window.scrollTo({top:0,behavior:'smooth'});
+  if(probe.duration>60.5){showStatus('status','वीडियो 1 मिनट से लंबा है। कृपया छोटा वीडियो चुनें।');return;}
+  const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  const path=currentUser.id+'/'+Date.now()+'_'+safeName;
+  showStatus('status','वीडियो ऑनलाइन अपलोड हो रहा है...');
+  const {error:uploadError}=await sb.storage.from(BUCKET).upload(path,file,{contentType:file.type,upsert:false});
+  if(uploadError){showStatus('status','अपलोड नहीं हुआ: '+uploadError.message);return;}
+  const {error:dbError}=await sb.from('videos').insert({user_id:currentUser.id,title,description:desc,storage_path:path});
+  if(dbError){showStatus('status','फाइल स्टोरेज में गई, लेकिन रिकॉर्ड नहीं जुड़ा: '+dbError.message+' कृपया सहायता लें।');return;}
+  $('uploadForm').reset();$('uploadBox').classList.remove('open');showStatus('status','');$('search').value='';
+  await loadVideos();window.scrollTo({top:0,behavior:'smooth'});
  };
- probe.onerror=()=>{URL.revokeObjectURL(probeUrl);$('status').textContent='यह वीडियो फ़ाइल खुल नहीं पाई। दूसरी फ़ाइल चुनें।';};
- probe.src=probeUrl;
- $('status').textContent='वीडियो जाँचा जा रहा है...';
+ probe.onerror=()=>{URL.revokeObjectURL(probeUrl);showStatus('status','यह वीडियो फ़ाइल खुल नहीं पाई। दूसरी फ़ाइल चुनें।');};
+ probe.src=probeUrl;showStatus('status','वीडियो की अवधि जाँची जा रही है...');
 });
-$('backBtn').onclick=closePlayer;
-$('player').addEventListener('click',e=>{if(e.target===$('player'))closePlayer()});
-$('deleteCurrent').onclick=()=>{
- if(currentId!==null){videos=videos.filter(v=>v.id!==currentId);closePlayer();render();}
+$('backBtn').onclick=()=>{
+ $('mainVideo').pause();$('mainVideo').removeAttribute('src');$('mainVideo').load();$('youtubeFrame').removeAttribute('src');$('youtubeFrame').style.display='none';$('mainVideo').style.display='block';$('player').classList.remove('open');document.body.style.overflow='';if(currentUrl){URL.revokeObjectURL(currentUrl);currentUrl=null;}currentId=null;
 };
-$('search').addEventListener('input',render);
-$('searchBtn').onclick=render;
+$('player').addEventListener('click',e=>{if(e.target===$('player'))$('backBtn').click();});
+$('deleteCurrent').style.display='none';
+function playVideo(id){
+ const v=videos.find(x=>String(x.id)===String(id));if(!v)return;
+ currentId=id;
+ if(currentUrl){URL.revokeObjectURL(currentUrl);currentUrl=null;}
+ if(v.youtubeId){$('mainVideo').pause();$('mainVideo').style.display='none';$('mainVideo').removeAttribute('src');$('mainVideo').load();$('youtubeFrame').style.display='block';$('youtubeFrame').src='https://www.youtube.com/embed/'+encodeURIComponent(v.youtubeId);}
+ else{$('youtubeFrame').style.display='none';$('youtubeFrame').removeAttribute('src');$('mainVideo').style.display='block';$('mainVideo').src=v.videoUrl;}
+ $('playerTitle').textContent=v.title;$('playerMeta').textContent='KSR Video · ऑनलाइन';$('playerDesc').textContent=v.desc||'';
+ $('player').classList.add('open');document.body.style.overflow='hidden';
+}
+$('search').addEventListener('input',render);$('searchBtn').onclick=render;
 $('footerSearch').onclick=()=>{$('search').focus();window.scrollTo({top:0,behavior:'smooth'});};
 $('showAll').onclick=()=>{$('search').value='';render();};
-$('homeBtn').onclick=()=>{closePlayer();window.scrollTo({top:0,behavior:'smooth'});};
+$('homeBtn').onclick=()=>{$('backBtn').click();window.scrollTo({top:0,behavior:'smooth'});};
 $('openYoutube').onclick=()=>{$('youtubeBox').classList.add('open');$('youtubeBox').scrollIntoView({behavior:'smooth',block:'start'});};
-$('cancelYoutube').onclick=()=>{$('youtubeBox').classList.remove('open');$('youtubeStatus').textContent='';};
-$('youtubeForm').addEventListener('submit',e=>{
+$('cancelYoutube').onclick=()=>{$('youtubeBox').classList.remove('open');showStatus('youtubeStatus','');};
+$('youtubeForm').addEventListener('submit',async e=>{
  e.preventDefault();
- const title=$('youtubeTitle').value.trim(),url=$('youtubeUrl').value.trim();
- const id=getYouTubeId(url);
- if(!id){$('youtubeStatus').textContent='लिंक सही नहीं है। youtu.be/… या youtube.com/watch?v=… लिंक डालें।';return;}
- if(videos.some(v=>v.youtubeId===id)){$('youtubeStatus').textContent='यह वीडियो पहले से जोड़ा गया है।';return;}
- videos.unshift({id:Date.now()+Math.random(),title,desc:'YouTube वीडियो',youtubeId:id,url});
- $('youtubeForm').reset();$('youtubeBox').classList.remove('open');$('youtubeStatus').textContent='';$('search').value='';render();window.scrollTo({top:0,behavior:'smooth'});
+ if(!configured())return;
+ if(!currentUser){showStatus('youtubeStatus','YouTube लिंक जोड़ने के लिए पहले लॉगिन करो।');return;}
+ const title=$('youtubeTitle').value.trim(),url=$('youtubeUrl').value.trim(),id=getYouTubeId(url);
+ if(!id){showStatus('youtubeStatus','लिंक सही नहीं है। youtu.be/… या youtube.com/watch?v=… लिंक डालें।');return;}
+ showStatus('youtubeStatus','लिंक सेव हो रहा है...');
+ const {error}=await sb.from('videos').insert({user_id:currentUser.id,title,description:'YouTube वीडियो',youtube_id:id});
+ if(error){showStatus('youtubeStatus','लिंक सेव नहीं हुआ: '+error.message);return;}
+ $('youtubeForm').reset();$('youtubeBox').classList.remove('open');showStatus('youtubeStatus','');$('search').value='';await loadVideos();window.scrollTo({top:0,behavior:'smooth'});
 });
-render();
+init();
 </script>
 </body>
 </html>
