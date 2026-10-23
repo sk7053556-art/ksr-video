@@ -150,7 +150,7 @@ input[type=file]{width:100%;font-size:13px;color:#ddd}
 <script>
 const $=id=>document.getElementById(id);
 const SUPABASE_URL='https://schzmhslgrxfpccexhjp.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY='PASTE_YOUR_SB_PUBLISHABLE_KEY_HERE';
+const SUPABASE_PUBLISHABLE_KEY='sb_publishable_FASB3JhvtC_fpEyjVa7TcQ_oUYVYv95';
 const BUCKET='ksr-videos';
 let sb=null, currentUser=null, videos=[], currentId=null, currentUrl=null;
 const grid=$('videoGrid');
@@ -170,8 +170,8 @@ function getYouTubeId(url){
 function showStatus(id,msg){$(id).textContent=msg||'';}
 function configured(){
  if(!window.supabase){showStatus('authStatus','इंटरनेट से Supabase लाइब्रेरी लोड नहीं हुई। इंटरनेट जाँचें।');return false;}
- if(!SUPABASE_PUBLISHABLE_KEY || SUPABASE_PUBLISHABLE_KEY==='PASTE_YOUR_SB_PUBLISHABLE_KEY_HERE'){
-  showStatus('authStatus','पहले HTML फाइल में PASTE_YOUR_SB_PUBLISHABLE_KEY_HERE की जगह अपनी sb_publishable_ वाली key डालें।');return false;
+ if(!SUPABASE_PUBLISHABLE_KEY || SUPABASE_PUBLISHABLE_KEY==='sb_publishable_FASB3JhvtC_fpEyjVa7TcQ_oUYVYv95'){
+  showStatus('authStatus','पहले HTML फाइल में sb_publishable_FASB3JhvtC_fpEyjVa7TcQ_oUYVYv95 की जगह अपनी sb_publishable_ वाली key डालें।');return false;
  }
  if(!sb) sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
  return true;
