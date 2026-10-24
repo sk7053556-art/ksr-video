@@ -170,8 +170,10 @@ function getYouTubeId(url){
 function showStatus(id,msg){$(id).textContent=msg||'';}
 function configured(){
  if(!window.supabase){showStatus('authStatus','इंटरनेट से Supabase लाइब्रेरी लोड नहीं हुई। इंटरनेट जाँचें।');return false;}
- if(!SUPABASE_PUBLISHABLE_KEY || SUPABASE_PUBLISHABLE_KEY==='sb_publishable_FASB3JhvtC_fpEyjVa7TcQ_oUYVYv95'){
-  showStatus('authStatus','पहले HTML फाइल में sb_publishable_FASB3JhvtC_fpEyjVa7TcQ_oUYVYv95 की जगह अपनी sb_publishable_ वाली key डालें।');return false;
+ 
+if(!SUPABASE_PUBLISHABLE_KEY || !SUPABASE_PUBLISHABLE_KEY.startsWith('sb_publishable_')){
+  showStatus('authStatus','HTML फाइल में सही Publishable Key डालें।');
+  return false;
  }
  if(!sb) sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
  return true;
