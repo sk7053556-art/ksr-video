@@ -228,7 +228,7 @@ $('signUpBtn').onclick=async()=>{
  const email=$('authEmail').value.trim(),password=$('authPassword').value;
  if(!email||password.length<6){showStatus('authStatus','ईमेल लिखें और कम-से-कम 6 अक्षर का पासवर्ड रखें।');return;}
  showStatus('authStatus','अकाउंट बनाया जा रहा है...');
- const {data,error}=await sb.auth.signUp({email,password});
+ const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:'https://sk7053556-art.github.io/ksr-video/'}});
  if(error){showStatus('authStatus','अकाउंट नहीं बना: '+error.message);return;}
  if(data.session){updateAuthUI(data.session.user);showStatus('authStatus','अकाउंट बन गया और लॉगिन हो गया।');}
  else showStatus('authStatus','अकाउंट अनुरोध सफल। अगर ईमेल पुष्टि माँगी जाए, तो अपने ईमेल में आए लिंक को खोलो, फिर लॉगिन करो।');
