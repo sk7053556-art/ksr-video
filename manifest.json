@@ -1,0 +1,13 @@
+{
+  "background_color": "#000000",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "KSR Video",
+  "orientation": "any",
+  "scope": "/",
+  "short_name": "KSR Video",
+  "start_url": "/",
+  "theme_color": "#e62117",
+  "id": "ksr-video",
+  "description": "KSR Video par gaon ke video dekhein aur apne video share karein."
+}
