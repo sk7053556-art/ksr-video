@@ -9,5 +9,13 @@
   "start_url": "/ksr-video/",
   "theme_color": "#e62117",
   "id": "/ksr-video/",
-  "description": "KSR Video - Gaon ke video dekhein aur share karein"
+  "description": "KSR Video - Gaon ke video dekhein aur share karein",
+  "icons": [
+    {
+      "src": "/ksr-video/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
 }
