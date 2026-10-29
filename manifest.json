@@ -4,10 +4,10 @@
   "display": "standalone",
   "name": "KSR Video",
   "orientation": "any",
-  "scope": "/",
+  "scope": "/ksr-video/",
   "short_name": "KSR Video",
-  "start_url": "/",
+  "start_url": "/ksr-video/",
   "theme_color": "#e62117",
-  "id": "ksr-video",
-  "description": "KSR Video par gaon ke video dekhein aur apne video share karein."
+  "id": "/ksr-video/",
+  "description": "KSR Video - Gaon ke video dekhein aur share karein"
 }
