@@ -10,12 +10,18 @@
   "theme_color": "#e62117",
   "id": "/ksr-video/",
   "description": "KSR Video - Gaon ke video dekhein aur share karein",
-  "icons": [
-    {
-      "src": "/ksr-video/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    }
-  ]
+    "icons": [
+  {
+    "src": "/ksr-video/launchericon-192x192.png",
+    "sizes": "192x192",
+    "type": "image/png",
+    "purpose": "any"
+  },
+  {
+    "src": "/ksr-video/launchericon-512x512.png",
+    "sizes": "512x512",
+    "type": "image/png",
+    "purpose": "any"
+  }
+]
 }
