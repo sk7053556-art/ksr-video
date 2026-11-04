@@ -181,7 +181,7 @@ if(!SUPABASE_PUBLISHABLE_KEY || !SUPABASE_PUBLISHABLE_KEY.startsWith('sb_publish
 }
 function render(){
  const q=$('search').value.trim().toLowerCase();
- const filtered=videos.filter(v=>(v.title+' '+(v.desc||'')).toLowerCase().includes(q));
+ const filtered=videos.filter(v=>((v.title||'')+' '+(v.desc||'')).normalize('NFC').toLowerCase().replace(/[ँं]/g,'ं').includes(q.normalize('NFC').toLowerCase().replace(/[ँं]/g,'ं')));
  $('count').textContent=filtered.length+' वीडियो';
  $('listHeading').textContent=q?'खोज के परिणाम':'ऑनलाइन वीडियो';
  grid.innerHTML='';
