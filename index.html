@@ -108,6 +108,17 @@ input[type=file]{width:100%;font-size:13px;color:#ddd}
    <label for="videoTitle">वीडियो का नाम *</label>
    <input id="videoTitle" type="text" maxlength="90" placeholder="जैसे: हमारे गाँव की सुबह" required>
    <label for="videoDesc">छोटा विवरण (वैकल्पिक)</label>
+   <label for="videoCategory">वीडियो की श्रेणी *</label>
+<select id="videoCategory" required>
+ <option value="">श्रेणी चुनें</option>
+ <option value="कॉमेडी">कॉमेडी</option>
+ <option value="गाँव">गाँव के वीडियो</option>
+ <option value="मनोरंजन">मनोरंजन</option>
+ <option value="शिक्षा">शिक्षा</option>
+ <option value="खेल">खेल</option>
+ <option value="व्लॉग">व्लॉग</option>
+ <option value="अन्य">अन्य</option>
+</select>
    <textarea id="videoDesc" maxlength="500" placeholder="इस वीडियो के बारे में लिखें..."></textarea>
    <label for="videoFile">मोबाइल से वीडियो चुनें *</label>
    <input id="videoFile" type="file" accept="video/mp4,video/webm,video/quicktime" required>
@@ -123,6 +134,17 @@ input[type=file]{width:100%;font-size:13px;color:#ddd}
    <input id="youtubeTitle" type="text" maxlength="90" placeholder="जैसे: मेरा पसंदीदा वीडियो" required>
    <label for="youtubeUrl">YouTube लिंक *</label>
    <input id="youtubeUrl" type="text" inputmode="url" placeholder="https://youtu.be/..." required>
+   <label for="youtubeCategory">वीडियो की श्रेणी *</label>
+<select id="youtubeCategory" required>
+ <option value="">श्रेणी चुनें</option>
+ <option value="कॉमेडी">कॉमेडी</option>
+ <option value="गाँव">गाँव के वीडियो</option>
+ <option value="मनोरंजन">मनोरंजन</option>
+ <option value="शिक्षा">शिक्षा</option>
+ <option value="खेल">खेल</option>
+ <option value="व्लॉग">व्लॉग</option>
+ <option value="अन्य">अन्य</option>
+</select>
    <div id="youtubeStatus"></div>
    <div class="rowbtn"><button class="btn primary" type="submit">लिंक जोड़ें</button><button class="btn secondary" type="button" id="cancelYoutube">रद्द करें</button></div>
   </form>
@@ -155,7 +177,6 @@ const SUPABASE_PUBLISHABLE_KEY='sb_publishable_FASB3JhvtC_fpEyjVa7TcQ_oUYVYv95';
 const BUCKET='ksr-videos';
 let sb=null, currentUser=null, videos=[], currentId=null, currentUrl=null;
 const grid=$('videoGrid');
-
 function escapeHTML(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function getYouTubeId(url){
  try{const u=new URL(url);let id='';
@@ -188,21 +209,21 @@ function render(){
  if(!filtered.length){grid.innerHTML='<div class="empty"><strong>'+(q?'कोई वीडियो नहीं मिला':'अभी कोई ऑनलाइन वीडियो नहीं है')+'</strong>'+(q?'दूसरा शब्द खोजकर देखें।':'लॉगिन करके अपना पहला वीडियो अपलोड करें।')+'</div>';return;}
  filtered.forEach(v=>{
   const card=document.createElement('article');card.className='card';
-  const thumb=v.youtubeId?'<img src="https://img.youtube.com/vi/'+encodeURIComponent(v.youtubeId)+'/hqdefault.jpg" alt="वीडियो थंबनेल" style="width:100%;height:100%;object-fit:cover">':'';
-  card.innerHTML='<div class="thumb">'+thumb+'<div class="play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div><span class="duration">वीडियो</span></div><div class="info"><div class="title">'+escapeHTML(v.title)+'</div><div class="meta">'+(v.youtubeId?'YouTube लिंक':'KSR Video · ऑनलाइन')+'</div><div class="cardbuttons"><button class="btn secondary watch">▶ देखें</button></div></div>';
+  const thumb=v.youtubeId?'<img src="https://img.youtube.com/vi/'+encodeURIComponen
+  card.querySelector('.thumb').addEventListener('click',()=>playVideo(v.id));t(v.youtubeId)+'/hqdefault.jpg" alt="वीडियो थंबनेल" style="width:100%;height:100%;object-fit:cover">':'';
+  card.innerHTML='<div class="thumb">'+thumb+'<div class="play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div><span class="duration">वीडियो</span></div><div class="info"><div class="title">'+escapeHTML(v.title)+'</div><div class="meta">श्रेणी: '+escapeHTML(v.category||'अन्य')+'</div><div class="meta">'+(v.youtubeId?'YouTube लिंक':'KSR Video · ऑनलाइन')+'</div><div class="cardbuttons"><button class="btn secondary watch">▶ देखें</button></div></div>';
   card.querySelector('.watch').addEventListener('click',e=>{e.stopPropagation();playVideo(v.id)});
-  card.querySelector('.thumb').addEventListener('click',()=>playVideo(v.id));
   grid.appendChild(card);
  });
 }
 async function loadVideos(){
  if(!configured()) return;
- const {data,error}=await sb.from('videos').select('id,user_id,title,description,storage_path,youtube_id,created_at').order('created_at',{ascending:false});
+ const {data,error}=await sb.from('videos').select('id,user_id,title,description,category,storage_path,youtube_id,created_at').order('created_at',{ascending:false});
  if(error){showStatus('authStatus','वीडियो लोड नहीं हुए: '+error.message);return;}
  videos=(data||[]).map(v=>{
   let videoUrl=null;
   if(v.storage_path) videoUrl=sb.storage.from(BUCKET).getPublicUrl(v.storage_path).data.publicUrl;
-  return {id:v.id,title:v.title,desc:v.description||'',userId:v.user_id,storagePath:v.storage_path,youtubeId:v.youtube_id||null,videoUrl};
+  return {id:v.id,title:v.title,desc:v.description||'',category:v.category||'अन्य',userId:v.user_id,storagePath:v.storage_path,youtubeId:v.youtube_id||null,videoUrl};
  });
  render();
 }
@@ -254,7 +275,7 @@ $('uploadForm').addEventListener('submit',async e=>{
  e.preventDefault();
  if(!configured())return;
  if(!currentUser){showStatus('status','पहले लॉगिन करो।');return;}
- const title=$('videoTitle').value.trim(),desc=$('videoDesc').value.trim(),file=$('videoFile').files[0];
+ const title=$('videoTitle').value.trim(),desc=$('videoDesc').value.trim(),category=$('videoCategory').value,file=$('videoFile').files[0];
  if(!file||!title)return;
  if(!file.type.startsWith('video/')){showStatus('status','कृपया वीडियो फ़ाइल चुनें।');return;}
  if(file.size>50*1024*1024){showStatus('status','फाइल 50 MB से छोटी होनी चाहिए।');return;}
@@ -268,7 +289,7 @@ $('uploadForm').addEventListener('submit',async e=>{
   showStatus('status','वीडियो ऑनलाइन अपलोड हो रहा है...');
   const {error:uploadError}=await sb.storage.from(BUCKET).upload(path,file,{contentType:file.type,upsert:false});
   if(uploadError){showStatus('status','अपलोड नहीं हुआ: '+uploadError.message);return;}
-  const {error:dbError}=await sb.from('videos').insert({user_id:currentUser.id,title,description:desc,storage_path:path});
+  const {error:dbError}=await sb.from('videos').insert({user_id:currentUser.id,title,description:desc,category,storage_path:path});
   if(dbError){showStatus('status','फाइल स्टोरेज में गई, लेकिन रिकॉर्ड नहीं जुड़ा: '+dbError.message+' कृपया सहायता लें।');return;}
   $('uploadForm').reset();$('uploadBox').classList.remove('open');showStatus('status','');$('search').value='';
   await loadVideos();window.scrollTo({top:0,behavior:'smooth'});
@@ -300,10 +321,10 @@ $('youtubeForm').addEventListener('submit',async e=>{
  e.preventDefault();
  if(!configured())return;
  if(!currentUser){showStatus('youtubeStatus','YouTube लिंक जोड़ने के लिए पहले लॉगिन करो।');return;}
- const title=$('youtubeTitle').value.trim(),url=$('youtubeUrl').value.trim(),id=getYouTubeId(url);
+ const title=$('youtubeTitle').value.trim(),url=$('youtubeUrl').value.trim(),category=$('youtubeCategory').value,id=getYouTubeId(url); 
  if(!id){showStatus('youtubeStatus','लिंक सही नहीं है। youtu.be/… या youtube.com/watch?v=… लिंक डालें।');return;}
  showStatus('youtubeStatus','लिंक सेव हो रहा है...');
- const {error}=await sb.from('videos').insert({user_id:currentUser.id,title,description:'YouTube वीडियो',youtube_id:id});
+ const {error}=await sb.from('videos').insert({user_id:currentUser.id,title,description:'YouTube वीडियो',category,youtube_id:id});
  if(error){showStatus('youtubeStatus','लिंक सेव नहीं हुआ: '+error.message);return;}
  $('youtubeForm').reset();$('youtubeBox').classList.remove('open');showStatus('youtubeStatus','');$('search').value='';await loadVideos();window.scrollTo({top:0,behavior:'smooth'});
 });
